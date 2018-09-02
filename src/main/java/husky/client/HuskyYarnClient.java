@@ -60,28 +60,35 @@ public class HuskyYarnClient {
   private FileSystem mFileSystem = null;
   private YarnClient mYarnClient = null;
   private YarnConfiguration mYarnConf = null;
+
   // Yarn application
   private ApplicationId mAppId = null;
   private String mAppName;
   private String mAppMasterJar = "";  // Jar that contains Application class
+  // 这几个path分别什么意思？
   private String mLocalResourceHDFSPaths;  // Paths to resources that need to download to working environment
   private String mLocalFiles = "";  // Paths to resources that either locate in client machine or on HDFS
   private String mLocalArchives = "";  // Paths to archives that either locate in client machine or on HDFS
+  //?
   private ArrayList<Pair<String, Integer>> mWorkerInfos = new ArrayList<Pair<String, Integer>>();
+
   // container resources
   private int mAppMasterMemory = 0;
   private int mContainerMemory = 0;  // Memory that can be used by a container
   private int mNumVirtualCores = 0;
   private int mAppPriority = 0;
+
   // husky application
   private String mMasterExec = "";
   private String mAppExec = "";
   private String mConfigFile = "";
   private String mLdLibraryPath = "";
+
   // options
   // 1. kerberos
   private String mUserName = "";
   private String mKeyTabFile = "";
+
   // 2. upload log files to hdfs
   private String mLogPathToHDFS = "";
 
@@ -142,6 +149,7 @@ public class HuskyYarnClient {
       return false;
     }
 
+    // ?
     mAppName = cliParser.getOptionValue("app_name", cliParser.getOptionValue("app_name", DEFAULT_APP_NAME));
     mLocalResourceHDFSPaths = cliParser.getOptionValue("local_resrcrt", LOCAL_RESOURCES_HDFS_ROOT);
     mLocalFiles = cliParser.getOptionValue("local_files", "");
@@ -242,11 +250,13 @@ public class HuskyYarnClient {
 
     Path resourcePath = new Path(path);
     if (path.startsWith("hdfs://")) {
+      // hdfs
       FileStatus fileStatus = mFileSystem.getFileStatus(resourcePath);
       if (!fileStatus.isFile()) {
         throw new RuntimeException("Only files can be provided as local resources.");
       }
     } else {
+      // 普通文件
       File file = new File(path);
       if (!file.exists()) {
         throw new RuntimeException("File not exist: " + path);
@@ -381,24 +391,31 @@ public class HuskyYarnClient {
   }
 
   private boolean run() throws YarnException, IOException {
+    // start yarn client proxy
     mYarnClient.start();
 
+    // get new application
     YarnClientApplication app = mYarnClient.createApplication();
 
+    // 应用提交的context
     ApplicationSubmissionContext appContext = app.getApplicationSubmissionContext();
+    // set appContext
     appContext.setApplicationName(mAppName);
-
     Resource resource = Records.newRecord(Resource.class);
     resource.setMemory(mAppMasterMemory);
     resource.setVirtualCores(mNumVirtualCores);
+
     appContext.setResource(resource);
 
+    // get new application's id
     mAppId = appContext.getApplicationId();
 
+    // 容器启动context
     ContainerLaunchContext amContainer = Records.newRecord(ContainerLaunchContext.class);
     amContainer.setLocalResources(getLocalResources());
     amContainer.setEnvironment(getEnvironment());
 
+    // set cmd
     StringBuilder cmdBuilder = new StringBuilder();
     if (!mKeyTabFile.isEmpty()) {
       if (mUserName.isEmpty()) {
